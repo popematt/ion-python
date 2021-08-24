@@ -1474,6 +1474,7 @@ static char ioncmodule_docs[] =
 
 static PyMethodDef ioncmodule_funcs[] = {
     {"ionc_write", (PyCFunction)ionc_write, METH_VARARGS | METH_KEYWORDS, ioncmodule_docs},
+    {"_ionc_write", (PyCFunction)_ionc_write, METH_VARARGS | METH_KEYWORDS, ioncmodule_docs},
     {"ionc_read", (PyCFunction)ionc_read, METH_VARARGS | METH_KEYWORDS, ioncmodule_docs},
     {NULL}
 };
