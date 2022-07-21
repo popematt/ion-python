@@ -27,18 +27,20 @@ try:
     from collections import OrderedDict
 except:
     from collections import MutableMapping, MutableSequence, OrderedDict
-    
+
 from datetime import datetime, timedelta, tzinfo
 from decimal import Decimal, ROUND_FLOOR, Context, Inexact
 from math import isnan
 
+import re
 import six
 
-from .util import Enum
+# from .util import Enum
+from enum import Enum, IntEnum
 from .util import record
 
 
-class IonType(Enum):
+class IonType(IntEnum):
     """Enumeration of the Ion data types."""
     NULL = 0
     BOOL = 1
@@ -75,7 +77,7 @@ class IonType(Enum):
 
 
 # TODO At some point we can add SCALAR_START/SCALAR_END for streaming large values.
-class IonEventType(Enum):
+class IonEventType(IntEnum):
     """Enumeration of Ion parser or serializer events.
 
     These types do not correspond directly to the Ion type system, but they are related.
@@ -351,7 +353,7 @@ class OffsetTZInfo(tzinfo):
         return 'OffsetTZInfo(%s%s)' % (sign, delta)
 
 
-class TimestampPrecision(Enum):
+class TimestampPrecision(IntEnum):
     """The different levels of precision supported in an Ion timestamp."""
     YEAR = 0
     MONTH = 1
@@ -396,6 +398,9 @@ PRECISION_LIMIT_LOOKUP = (
     Decimal('0.00001'),
     Decimal('0.000001')
 )
+DATETIME_CONSTRUCTOR_DAY_ARGUMENT_INDEX = 2
+DATETIME_CONSTRUCTOR_HOUR_ARGUMENT_INDEX = 3
+DATETIME_CONSTRUCTOR_SECOND_ARGUMENT_INDEX = 5
 DATETIME_CONSTRUCTOR_MICROSECOND_ARGUMENT_INDEX = 6
 
 
@@ -455,17 +460,47 @@ class Timestamp(datetime):
                 kwargs[TIMESTAMP_MICROSECOND_FIELD] = new_value
                 return args
 
-        precision = None
+        precision = TimestampPrecision.YEAR
         fractional_precision = None
         fractional_seconds = None
         datetime_microseconds = None
+
+        args = list(args)
+        # For each time field, check if it exists. If it does, check if it is `None`.
+        # If the arg exists and is not None, then precision is at least up to that field.
+        # Then, substitute any `None` with the default value.
+        if len(args) > 1: # there's a MONTH
+            if args[1] is None:
+                args[1] = 1
+            else:
+                precision = TimestampPrecision.MONTH
+        if len(args) > 2: # There's a DAY
+            if args[2] is None:
+                args[2] = 1
+            else:
+                precision = TimestampPrecision.DAY
+        if len(args) > 4: # There's an hour and minute
+            if args[3] is None and args[4] is None:
+                args[3] = 0
+                args[4] = 0
+            else:
+                precision = TimestampPrecision.MINUTE
+        if len(args) > 5: # There's a second
+            if args[5] is None:
+                args[5] = 0
+            else:
+                precision = TimestampPrecision.SECOND
+
+        args = tuple(args)
+
         has_microsecond_argument = len(args) > DATETIME_CONSTRUCTOR_MICROSECOND_ARGUMENT_INDEX
         if has_microsecond_argument:
             datetime_microseconds = args[DATETIME_CONSTRUCTOR_MICROSECOND_ARGUMENT_INDEX]
         elif TIMESTAMP_MICROSECOND_FIELD in kwargs:
             datetime_microseconds = kwargs.get(TIMESTAMP_MICROSECOND_FIELD)
         if TIMESTAMP_PRECISION_FIELD in kwargs:
-            precision = kwargs.get(TIMESTAMP_PRECISION_FIELD)
+            if kwargs.get(TIMESTAMP_PRECISION_FIELD) is not None:
+                precision = kwargs.get(TIMESTAMP_PRECISION_FIELD)
             # Make sure we mask this before we construct the datetime.
             del kwargs[TIMESTAMP_PRECISION_FIELD]
         if TIMESTAMP_FRACTION_PRECISION_FIELD in kwargs:
@@ -568,9 +603,48 @@ class Timestamp(datetime):
             fractional_seconds=raw_ts.fractional_seconds
         )
 
+    @classmethod
+    def fromisoformat(cls, date_string):
+        """Construct a timestamp from a string in one of the ISO 8601 formats."""
+        if not isinstance(date_string, str):
+            raise TypeError('fromisoformat: argument must be str')
 
-def timestamp(year, month=1, day=1,
-              hour=0, minute=0, second=0, microsecond=None,
+        precision = None
+        fractional_precision = 0
+        fractional_seconds = None
+
+        dt_parts = date_string.split('T')
+        if len(dt_parts) > 1 and dt_parts[1] != '':
+            t_part = re.split('[Z+-]', dt_parts[1])[0]
+            if len(t_part) > 5:
+                precision = TimestampPrecision.SECOND
+                if len(t_part) > 9:
+                    fractional_precision = len(t_part) - 9
+            else:
+                precision = TimestampPrecision.MINUTE
+        else:
+            d_part = dt_parts[0].split('-')
+            precision = TimestampPrecision(len(d_part) - 1)
+            # TODO: datetime.fromisoformat requires at least YYYY-MM-DD
+            #       should we support YYYY and YYYY-MM in this function?
+
+            # Pad the original string so that we can support YYYY and YYYY-MM
+            if len(date_string) < 7:
+                date_string += "-01-01"
+            elif len(date_string) < 10:
+                    date_string += "-01"
+
+        dt = datetime.fromisoformat(date_string)
+        return Timestamp(
+            dt.year, dt.month, dt.day,
+            dt.hour, dt.minute, dt.second,
+            dt.microsecond, dt.tzinfo,
+            precision=precision, fractional_precision=fractional_precision, fractional_seconds=fractional_seconds
+        )
+
+
+def timestamp(year, month=None, day=None,
+              hour=None, minute=None, second=None, microsecond=None,
               off_hours=None, off_minutes=None,
               precision=None, fractional_precision=None, fractional_seconds=None):
     """Shorthand for the :class:`Timestamp` constructor.
@@ -598,8 +672,9 @@ def timestamp(year, month=1, day=1,
 
     return Timestamp(
         year, month, day,
-        hour, minute, second, microsecond,
-        tz, precision=precision, fractional_precision=fractional_precision, fractional_seconds=fractional_seconds
+        hour, minute, second,
+        microsecond, tz,
+        precision=precision, fractional_precision=fractional_precision, fractional_seconds=fractional_seconds
     )
 
 
