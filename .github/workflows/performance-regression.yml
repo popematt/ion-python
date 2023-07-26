@@ -67,7 +67,7 @@ jobs:
     needs: [generate-test-data, prepopulate-pip-cache]
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', 'pypy-3.7', 'pypy-3.8']
+        python-version: ['3.9', '3.11', 'pypy-3.8', 'pypy-3.10']
         test-data: ['nestedStruct', 'nestedList', 'sexp', 'realWorldDataSchema01', 'realWorldDataSchema02', 'realWorldDataSchema03']
       fail-fast: false
     steps:
