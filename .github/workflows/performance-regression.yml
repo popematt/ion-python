@@ -10,7 +10,7 @@ env:
   report_statistics: 'file_size, time_min, time_mean, time_p50, memory_usage_peak'
   compare_statistics: 'file_size(B),time_min(ns),time_mean(ns),time_p50(ns)'
   data_size: '50000'
-  spec_defaults: '{warmups:10,iterations:100}'
+  spec_defaults: '{warmups:10,iterations:1000}'
   specs: '{command:read,format:ion_text} {command:write,format:ion_text} {command:read,format:ion_binary} {command:write,format:ion_binary}'
   test_data_id: 'generated-test-data'
   run_cli: 'python amazon/ionbenchmark/ion_benchmark_cli.py'
