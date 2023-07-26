@@ -11,7 +11,7 @@ env:
   spec_defaults: '{warmups:10,iterations:100}'
   specs: '{command:read,format:ion_text} {command:write,format:ion_text} {command:read,format:ion_binary} {command:write,format:ion_binary}'
   test_data_id: 'generated-test-data'
-  cli_script: amazon/ionbenchmark/ion_benchmark_cli.py
+  run_cli: 'python amazon/ionbenchmark/ion_benchmark_cli.py'
 
 
 jobs:
@@ -44,8 +44,8 @@ jobs:
           path: testData
 
   prepopulate-pip-cache:
-    # Since all the "Check" jobs can run in parallel, caching could have basically no effect. In order to speed things
-    # up, this step can run in parallel with the "Generate Data" job, effectively precaching all the dependencies.
+    # Since all the "Check" jobs can run in parallel, caching _could_ have basically no effect. In order to speed things
+    # up, this step can run in parallel with the "Generate Data" job, pre-caching all the dependencies.
     name: Setup PIP Cache
     runs-on: ubuntu-latest
     steps:
@@ -57,7 +57,7 @@ jobs:
           cache-dependency-path: '**/requirements.txt'
       - run: |
           pip install -r requirements.txt
-          pip install .
+          # TODO: See if there's a way to cache the ion-c build output if it hasn't changed
 
   detect-regression:
     name: Check
@@ -99,63 +99,42 @@ jobs:
           name: ${{env.test_data_id}}
 
       # Generates performance results for the previous commit
-
-
       - name: Create a virtual environment
         working-directory: ./baseline
-          # python3 -m venv ./venv && . venv/bin/activate
         run: |
           pip install -r requirements.txt
-          # pip install -e .
-          # python setup.py install
           pip install .
-
       - name: Run baseline performance benchmark
         id: 'baseline'
         working-directory: ./baseline
-        env:
-          cli_script: ${{env.cli_script}}
-          # . venv/bin/activate
         run: |
-          python $cli_script run '${{env.specs}}' -d '${{env.spec_defaults}}' \
+          ${{env.run_cli}} run '${{env.specs}}' -d '${{env.spec_defaults}}' \
               -O '{input_file:"${{steps.download.outputs.download-path}}/${{ matrix.test-data }}.10n"}' \
               -o "$PWD/report.ion" -r '${{env.report_statistics}}'
           echo "::group::Ion Report"
-          read < report.ion 
+          echo "$(<report.ion)"
           echo "::endgroup::"
           echo "report=$PWD/report.ion" >> "$GITHUB_OUTPUT"
 
       # Generates performance results for the current commit
-
       - name: Create a virtual environment and setup the package
         working-directory: ./new
-          # python3 -m venv ./venv && . venv/bin/activate
         run: |
           pip install -r requirements.txt
-          # pip install -e .
-          # python setup.py install
           pip install .
-
       - name: Run new performance benchmark
         id: 'new'
         working-directory: ./new
-        env:
-          cli_script: ${{env.cli_script}}
-          # . venv/bin/activate
         run: |
-          python $cli_script run '${{env.specs}}' -d '${{env.spec_defaults}}' \
+          ${{env.run_cli}} run '${{env.specs}}' -d '${{env.spec_defaults}}' \
               -O '{input_file:"${{steps.download.outputs.download-path}}/${{ matrix.test-data }}.10n"}' \
               -o "$PWD/report.ion" -r '${{env.report_statistics}}'
           echo "::group::Ion Report"
-          read < report.ion 
+          echo "$(<report.ion)"
           echo "::endgroup::"
           echo "report=$PWD/report.ion" >> "$GITHUB_OUTPUT"
 
       # Compare results and identify regression
       - name: Detect performance regression
         working-directory: ./new
-        env:
-          cli_script: ${{env.cli_script}}
-        run: |
-          python $cli_script compare --fail ${{steps.baseline.outputs.report}} ${{steps.new.outputs.report}} \
-              -c '${{env.compare_statistics}}'
+        run: ${{env.run_cli}} compare --fail ${{steps.baseline.outputs.report}} ${{steps.new.outputs.report}} -c '${{env.compare_statistics}}'
