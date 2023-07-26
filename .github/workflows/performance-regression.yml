@@ -120,6 +120,9 @@ jobs:
           python $cli_script run '${{env.specs}}' -d '${{env.spec_defaults}}' \
               -O '{input_file:"${{steps.download.outputs.download-path}}/${{ matrix.test-data }}.10n"}' \
               -o "$PWD/report.ion" -r '${{env.report_statistics}}'
+          echo "::group::Ion Report"
+          read < report.ion 
+          echo "::endgroup::"
           echo "report=$PWD/report.ion" >> "$GITHUB_OUTPUT"
 
       # Generates performance results for the current commit
@@ -143,6 +146,9 @@ jobs:
           python $cli_script run '${{env.specs}}' -d '${{env.spec_defaults}}' \
               -O '{input_file:"${{steps.download.outputs.download-path}}/${{ matrix.test-data }}.10n"}' \
               -o "$PWD/report.ion" -r '${{env.report_statistics}}'
+          echo "::group::Ion Report"
+          read < report.ion 
+          echo "::endgroup::"
           echo "report=$PWD/report.ion" >> "$GITHUB_OUTPUT"
 
       # Compare results and identify regression
@@ -151,6 +157,5 @@ jobs:
         env:
           cli_script: ${{env.cli_script}}
         run: |
-          cat ${{steps.baseline.outputs.report}}
-          cat ${{steps.new.outputs.report}}
-          python $cli_script compare --fail ${{steps.baseline.outputs.report}} ${{steps.new.outputs.report}}
+          python $cli_script compare --fail ${{steps.baseline.outputs.report}} ${{steps.new.outputs.report}} \
+              -c '${{env.compare_statistics}}'
