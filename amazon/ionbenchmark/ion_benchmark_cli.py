@@ -51,7 +51,7 @@ def compare_command():
     Compare the results of two benchmarks to determine if <new_result> has regressed compared to <previous_result>.
 
     Usage:
-        ion_python_benchmark_cli.py compare <previous_result> <new_result> [-fq][--abc <bool>][--threshold <THRESHOLD>][--output <PATH>][-c <FIELD>]...
+        ion_python_benchmark_cli.py compare <previous_result> <new_result> [-fq][--threshold <THRESHOLD>][--output <PATH>][-c <FIELDS>]
 
     Arguments:
         <previous_result>      A report from running a benchmark at some point in the past.
@@ -59,7 +59,7 @@ def compare_command():
         <new_result>           A new report to compare against
 
     Options:
-        -c <FIELD>, --compare <FIELD>     A field to compare in the reports. [default: file_size(B) time_min(ns)]
+        -c <FIELDS>, --compare <FIELDS>     A comma separated list of fields to compare in the reports. [default: file_size(B),time_min(ns),time_mean(ns),time_p50(ns)]
         -o --output PATH       File to write the regression report.
         -q --quiet             Suppress writing regressions to std out. [default: False]
         -t <FLOAT>, --threshold <FLOAT>         Margin of error for comparison. [default: 0.20]
@@ -83,7 +83,7 @@ def compare_command():
             cur_result = current_results[idx]
             name = cur_result['name']
             result = {'name': name}
-            for keyword in comparison_keywords:
+            for keyword in comparison_keywords.split(","):
                 cur = float(cur_result[keyword])
                 prev = float(prev_result[keyword])
                 relative_diff = (cur - prev) / prev
@@ -207,7 +207,7 @@ def run_spec_command():
 
         -o --output FILE        Destination to store the report. If unset, prints to std out.
 
-        -r --report FIELDS      Comma-separated list of fields to include in the report. [default: file_size, time_min, time_mean, memory_usage_peak]
+        -r --report FIELDS      Comma-separated list of fields to include in the report. [default: file_size,time_min,time_mean,time_p50,memory_usage_peak]
 
     Example:
         ./ion_python_benchmark_cli.py run my_spec_file.ion -d '{iterations:1000}' -o '{warmups:0}' -r "time_min, file_size, peak_memory_usage"
