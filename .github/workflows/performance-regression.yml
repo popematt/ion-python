@@ -108,7 +108,7 @@ jobs:
         id: 'baseline'
         working-directory: ./baseline
         run: |
-          ${{env.run_cli}} run '${{env.specs}}' -d '${{env.spec_defaults}}' \
+          ${{env.run_cli}} spec '${{env.specs}}' -d '${{env.spec_defaults}}' \
               -O '{input_file:"${{steps.download.outputs.download-path}}/${{ matrix.test-data }}.10n"}' \
               -o "$PWD/report.ion" -r '${{env.report_statistics}}'
           echo "::group::Ion Report"
@@ -126,7 +126,7 @@ jobs:
         id: 'new'
         working-directory: ./new
         run: |
-          ${{env.run_cli}} run '${{env.specs}}' -d '${{env.spec_defaults}}' \
+          ${{env.run_cli}} spec '${{env.specs}}' -d '${{env.spec_defaults}}' \
               -O '{input_file:"${{steps.download.outputs.download-path}}/${{ matrix.test-data }}.10n"}' \
               -o "$PWD/report.ion" -r '${{env.report_statistics}}'
           echo "::group::Ion Report"
