@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import gc
+import math
 import tempfile
 import platform
 import time
@@ -67,13 +68,18 @@ def run_benchmark(benchmark_spec: BenchmarkSpec):
     # warm up
     timer.timeit(benchmark_spec.get_warmups())
 
-    # range-finding
-    # This needs the default timer (measuring in seconds) to work correctly, so it's a different Timer instance.
-    (batch_size, _) = timeit.Timer(stmt=test_fun, setup=setup).autorange()
-
-    # TODO: Consider making the target time configurable. Ad hoc testing indicates that samples of 1-2 seconds give
-    # tighter results than the default 0.2 seconds, but for very quick testing, this can be annoyingly slow.
-    batch_size *= 5  # ~1-2 seconds
+    # TODO: Consider making the target batch time or the batch size configurable instead of using this hack.
+    import os
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        # make the unit tests run in a reasonable time; add 1 to ensure batch size is never zero
+        batch_size = 1
+    else:
+        # range-finding
+        # This needs the default timer (measuring in seconds) to work correctly, so it's a different Timer instance.
+        (batch_size, _) = timeit.Timer(stmt=test_fun, setup=setup).autorange()
+        # Ad hoc testing indicates that samples of 1-2 seconds give tighter results than the default 0.2 seconds, but for
+        # very quick testing, this can be annoyingly slow.
+        batch_size *= 5  # ~1-2 seconds
 
     # sample collection (iterations)
     raw_timings = timer.repeat(benchmark_spec.get_iterations(), batch_size)

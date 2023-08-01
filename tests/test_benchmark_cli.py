@@ -66,23 +66,22 @@ def test_option_read_no_c_extension(file=generate_test_path('integers.ion')):
 def test_option_read_iterations(file=generate_test_path('integers.ion')):
     # This is a potentially flaky test due to the overhead of running the CLI as a new process.
     start = time.perf_counter()
-    (error_code, _, _) = run_cli(['read', file, '--iterations', '1'])
+    (error_code, _, _) = run_cli(['read', file, '--iterations', '3'])
     stop = time.perf_counter()
     assert not error_code
     time_1 = stop - start
 
     start = time.perf_counter()
-    (error_code, _, _) = run_cli(['read', file, '--iterations', '10000'])
+    (error_code, _, _) = run_cli(['read', file, '--iterations', '300'])
     stop = time.perf_counter()
     assert not error_code
     time_2 = stop - start
 
-    # Executing 10000 times should be longer than benchmark only once, but don't have to be exact 100x faster.
     assert time_2 > time_1
 
 
 def test_option_write_iterations(file=generate_test_path('integers.ion')):
-    (error_code, _, _) = run_cli(['write', file, '--iterations', '100'])
+    (error_code, _, _) = run_cli(['write', file, '--iterations', '10'])
     assert not error_code
 
 
