@@ -72,6 +72,10 @@ def compare_command():
     regression_threshold = float(args['--threshold'])
     comparison_keywords = args['--compare']
 
+    # TODO: Update this command to use the information in REPORT_FIELDS, such as the direction of improvement (doi).
+    # https://github.com/amazon-ion/ion-python/issues/281
+    # Without that (i.e. right now), the compare command will actually fail when the ops/sec metric improves. :S
+
     with open(previous_path, 'br') as p, open(current_path, 'br') as c:
         previous_results = ion.load(p)
         current_results = ion.load(c)
@@ -207,7 +211,7 @@ def run_spec_command():
 
         -o --output FILE        Destination to store the report. If unset, prints to std out.
 
-        -r --report FIELDS      Comma-separated list of fields to include in the report. [default: file_size,time_min,time_mean,time_p50,memory_usage_peak]
+        -r --report FIELDS      Comma-separated list of fields to include in the report. [default: file_size,ops/s_mean,ops/s_error,memory_usage_peak]
 
     Example:
         ./ion_python_benchmark_cli.py run my_spec_file.ion -d '{iterations:1000}' -o '{warmups:0}' -r "time_min, file_size, peak_memory_usage"
@@ -284,7 +288,15 @@ def _run_benchmarks(specs: list, report_fields, output_file):
         result_stats = report_stats(benchmark_spec, result, report_fields)
         report.append(result_stats)
 
-    print(tabulate(report, tablefmt='fancy_grid', headers='keys'))
+        # TODO: Add some option to dump or otherwise expose the raw sample data. For now, you can
+        # uncomment the following lines to get the raw results as CSV that can be copy/pasted into a spreadsheet.
+        #
+        # printable_key = benchmark_spec.get_name().replace(" ", "").replace(",", "-")
+        # for _x in [printable_key, *result.timings]:
+        #     print(_x, end=",")
+        # print("")
+
+    print(tabulate(report, tablefmt='pipe', headers='keys', floatfmt='.2f'))
 
     if output_file:
         des_dir = os.path.dirname(output_file)
