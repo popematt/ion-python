@@ -7,7 +7,7 @@ on:
       - '**/*.md'
 
 env:
-  report_statistics: 'file_size, time_min, time_mean, time_error, memory_usage_peak'
+  report_statistics: 'file_size, time_min, time_mean, memory_usage_peak'
   compare_statistics: 'file_size(B),time_mean(ns)'
   data_size: '100'
   spec_defaults: '{warmups:100,iterations:100}'
